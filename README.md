@@ -4,7 +4,7 @@
 
 # 运行步骤:
 1.修改baidu_index/config.py要启用的浏览器driver, 因为有些人PhantomJS配置可能有问题，默认使用Firefox(容易配置).
-  具体参考selenium的浏览器环境配置
+  具体参考selenium的浏览器环境配置。讨论区里面，jxlwqq这位朋友说用selenium的2.53.6版本，安装firefox 45 版本，并禁止浏览器自动升级。
 
 2.修改baidu_index/config.py里面的百度账号跟密码
 
