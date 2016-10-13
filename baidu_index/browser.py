@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import traceback
 import time
 import urllib
 import json
@@ -8,18 +8,22 @@ from datetime import datetime, timedelta
 
 from selenium import webdriver
 
-import config
-from .api import Api
-from .utils.log import logger
-from .multi_thread import WorkManager
+from config import IniConfig
+
+from api import Api
+from utils.log import logger
+from multi_thread import WorkManager
+
+
+ini_config = IniConfig()
 
 
 class BaiduBrowser(object):
     def __init__(self, cookie_json='', check_login=True):
-        if not config.browser_driver:
+        if not ini_config.browser_driver:
             browser_driver_name = 'Firefox'
         else:
-            browser_driver_name = config.browser_driver
+            browser_driver_name = ini_config.browser_driver
         browser_driver_class = getattr(webdriver, browser_driver_name)
         self.browser = browser_driver_class()
         # 设置超时时间
@@ -27,23 +31,26 @@ class BaiduBrowser(object):
         # 设置脚本运行超时时间
         self.browser.set_script_timeout(10)
         # 百度用户名
-        self.user_name = config.user_name
+        self.user_name = ini_config.user_name
         # 百度密码
-        self.password = config.password
+        self.password = ini_config.password
         self.cookie_json = cookie_json
         self.api = None
         self.cookie_dict_list = []
 
         self.init_api(check_login=check_login)
 
+    def __del__(self):
+        self.close()
+
     def is_login(self):
         # 如果初始化BaiduBrowser时传递了cookie信息，则检测一下是否登录状态
         self.login_with_cookie(self.cookie_json)
         # 访问待检测的页面
-        self.browser.get(config.user_center_url)
+        self.browser.get(ini_config.user_center_url)
         html = self.browser.page_source
         # 检测是否有登录成功标记
-        return config.login_sign in html
+        return ini_config.login_sign in html
 
     def init_api(self, check_login=True):
         # 判断是否需要登录
@@ -79,7 +86,7 @@ class BaiduBrowser(object):
         end_date = end_date.strftime("%Y-%m-%d")
         return start_date, end_date, date_list
 
-    def get_one_day_index(self, date, url):
+    def get_one_day_index(self, date, url, keyword, type_name, area):
         try_num = 0
         try_max_num = 5
         while try_num < try_max_num:
@@ -93,15 +100,20 @@ class BaiduBrowser(object):
                 break
             except:
                 pass
-        logger.info('date:%s, value:%s' % (date, value))
+        logger.info(
+            'keyword:%s, type_name:%s, area:%s, date:%s, value:%s' % (
+                keyword, type_name, area, date, value
+            )
+        )
         return value.replace(',', '')
 
     def get_baidu_index_by_date_range(self, keyword, start_date, end_date,
-                                      type_name):
+                                      type_name, area):
         # 根据区间获取关键词的索引值
-        url = config.time_range_trend_url.format(
+        url = ini_config.time_range_trend_url.format(
             start_date=start_date, end_date=end_date,
-            word=urllib.quote(keyword.encode('gbk'))
+            word=urllib.quote(keyword.encode('gbk')),
+            area=area
         )
         self.browser.get(url)
         # 执行js获取后面所需的res和res2的值
@@ -114,7 +126,7 @@ class BaiduBrowser(object):
         )
 
         # 拼接api的url
-        url = config.all_index_url.format(
+        url = ini_config.all_index_url.format(
             res=res, res2=res2, start_date=start_date, end_date=end_date
         )
         # 获取api的结果信息，这里面保存了后面日期节点的一些加密值
@@ -122,17 +134,20 @@ class BaiduBrowser(object):
         indexes_enc = all_index_info['data'][type_name][0]['userIndexes_enc']
         enc_list = indexes_enc.split(',')
 
-        wm = WorkManager(config.num_of_threads)
+        wm = WorkManager(int(ini_config.num_of_threads))
 
         # 遍历这些enc值，这些值拼接出api的url(这个页面返回 图片信息以及css规定的切图信息)
         for index, _ in enumerate(enc_list):
-            url = config.index_show_url.format(
+            url = ini_config.index_show_url.format(
                 res=res, res2=res2, enc_index=_, t=int(time.time()) * 1000
             )
             # 根据enc在列表中的位置，获取它的日期
             date = date_list[index]
             # 将任务添加到多线程下载模型中
-            wm.add_job(date, self.get_one_day_index, date, url)
+            wm.add_job(
+                date, self.get_one_day_index, date, url, keyword,
+                type_name, area
+            )
 
         wm.start()
         wm.wait_for_complete()
@@ -144,7 +159,7 @@ class BaiduBrowser(object):
 
     def _get_index_period(self, keyword):
         # 拼接一周趋势的url
-        url = config.one_week_trend_url.format(
+        url = ini_config.one_week_trend_url.format(
             word=urllib.quote(keyword.encode('gbk'))
         )
         self.browser.get(url)
@@ -157,7 +172,7 @@ class BaiduBrowser(object):
         start_date, end_date, date_list = self.get_date_info(
             start_date, end_date
         )
-        url = config.all_index_url.format(
+        url = ini_config.all_index_url.format(
             res=res, res2=res2, start_date=start_date, end_date=end_date
         )
         all_index_info = self.api.get_all_index_html(url)
@@ -170,10 +185,10 @@ class BaiduBrowser(object):
         logger.info('all_start_date:%s, all_end_date:%s' % (start_date, end_date))
         return date_list
 
-    def get_baidu_index(self, keyword, type_name):
-        if config.start_date and config.end_date:
+    def get_baidu_index(self, keyword, type_name, area):
+        if ini_config.start_date and ini_config.end_date:
             _, _, date_list = self.get_date_info(
-                start_date=config.start_date, end_date=config.end_date
+                start_date=ini_config.start_date, end_date=ini_config.end_date
             )
         else:
             # 配置文件不配置start_date和end_date，可以查询到这个关键词数据的最大区间
@@ -191,7 +206,7 @@ class BaiduBrowser(object):
                 else:
                     end_date = date_list[start + skip]
                 result = self.get_baidu_index_by_date_range(
-                    keyword, start_date, end_date, type_name
+                    keyword, start_date, end_date, type_name, area
                 )
                 baidu_index_dict.update(result)
                 start += skip + 1
@@ -202,14 +217,21 @@ class BaiduBrowser(object):
         return baidu_index_dict
 
     def login(self, user_name, password):
-        login_url = config.login_url
+        login_url = ini_config.login_url
         # 访问登陆页
         self.browser.get(login_url)
+        time.sleep(2)
 
         # 自动填写表单并提交，如果出现验证码需要手动填写
-        user_name_obj = self.browser.find_element_by_id(
-            'TANGRAM__PSP_3__userName'
-        )
+        while 1:
+            try:
+                user_name_obj = self.browser.find_element_by_id(
+                    'TANGRAM__PSP_3__userName'
+                )
+                break
+            except:
+                logger.error(traceback.format_exc())
+                time.sleep(1)
         user_name_obj.send_keys(user_name)
         ps_obj = self.browser.find_element_by_id('TANGRAM__PSP_3__password')
         ps_obj.send_keys(password)
@@ -221,7 +243,12 @@ class BaiduBrowser(object):
             time.sleep(1)
 
     def close(self):
-        self.browser.quit()
+        if getattr(self, 'browser'):
+            if self.browser:
+                try:
+                    self.browser.quit()
+                except:
+                    pass
 
     def get_cookie_json(self):
         return json.dumps(self.browser.get_cookies())

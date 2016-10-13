@@ -3,3 +3,4 @@ selenium==2.53.6
 requests==2.2.1
 openpyxl==2.3.3
 xlwt==1.0.0
+chardet==2.3.0
