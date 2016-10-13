@@ -10,10 +10,10 @@
 
 3.修改baidu_index/config.ini中的start_date和end_date，如果不配置可以查询到这个关键词数据的最大区间
 
-4. 可自主修改baidu_index/config.ini中的其他配置,
+4.可自主修改baidu_index/config.ini中的其他配置,
    如: num_of_threads,file_name_encoding,index_type_list,area_list
 
-5. 修改task.txt，这是关键词的任务列表，一行一个。
+5.修改task.txt，这是关键词的任务列表，一行一个。
 
 6.执行 python main.py
 
