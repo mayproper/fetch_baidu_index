@@ -8,14 +8,11 @@ from datetime import datetime, timedelta
 
 from selenium import webdriver
 
-from config import IniConfig
+from config import ini_config
 
 from api import Api
 from utils.log import logger
 from multi_thread import WorkManager
-
-
-ini_config = IniConfig()
 
 
 class BaiduBrowser(object):
@@ -116,6 +113,8 @@ class BaiduBrowser(object):
             area=area
         )
         self.browser.get(url)
+        if ini_config.browser_sleep:
+            time.sleep(float(ini_config.browser_sleep))
         # 执行js获取后面所需的res和res2的值
         res = self.browser.execute_script('return PPval.ppt;')
         res2 = self.browser.execute_script('return PPval.res2;')

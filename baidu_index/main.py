@@ -9,11 +9,10 @@ import chardet
 
 from browser import BaiduBrowser
 from utils.log import logger
-from config import IniConfig
+from config import ini_config
 from city import final_city_dict
 
 
-ini_config = IniConfig()
 index_type_dict = {
     'all': u'整体趋势', 'pc': u'PC趋势', 'wise': u'移动趋势'
 }

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import re
 from ConfigParser import ConfigParser
 from cStringIO import StringIO
 
@@ -14,7 +13,6 @@ def load_configs(column='config', config_ini_path='config.ini'):
     content = content.replace('\xef\xbb\xbf', '')
     fp = StringIO(content)
     _cp.readfp(fp)
-    # _cp.read(config_ini_path)
     return _cp.items(column)
 
 
@@ -26,3 +24,6 @@ class IniConfig(object):
     def __getattribute__(self, *args, **kwargs):
         val = configs.get(args[0], '').strip()
         return val
+
+
+ini_config = IniConfig()
