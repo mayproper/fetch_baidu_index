@@ -208,11 +208,11 @@ class BaiduBrowser(object):
                     keyword, start_date, end_date, type_name, area
                 )
                 baidu_index_dict.update(result)
-                start += skip + 1
             except:
                 import traceback
-
                 print traceback.format_exc()
+            finally:
+                start += skip + 1
         return baidu_index_dict
 
     def login(self, user_name, password):
